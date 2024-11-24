@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title></title>
+	</head>
+	<body>
+		<canvas width="500" height="500"></canvas>
+
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/tinycolor/1.6.0/tinycolor.min.js" integrity="sha512-AvCfbOQzCVi2ctVWF4m89jLwTn/zVPJuS7rhiKyY3zqyCdbPqtvNa0I628GJqPytbowfFjkAGOpq85E5kQc40Q==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+		<script>
+			const cache = {};
+
+			function calcColor(min, max, val){
+				if(cache[val]) {
+					return cache[val];
+				}
+
+				const minHue = 240, maxHue=0;
+				const curPercent = (val - min) / (max-min);
+				const colString = "hsl(" + ((curPercent * (maxHue-minHue) ) + minHue) + ",100%,50%)";
+				return cache[val] = tinycolor(colString).toRgb()
+			}
+
+			const w = 500;
+			const h = 500;
+
+			const count = 10;
+
+			const calcSine = (w, h, xCenter, yCenter, d) => {
+				return Array(w).fill().map((_, x) => Array(h).fill(0).map((_, y) => {
+					const dist = Math.sqrt(Math.pow(x - xCenter, 2) + Math.pow(y - yCenter, 2))
+
+					return Math.sin(dist / count + d);
+				}));
+			};
+
+			let off = 0;
+
+			const fixed = calcSine(w, h, 200, 250, 0);
+
+			setInterval(() => {
+				off = (off + 1) % 100;
+				const offset = (Math.PI / 50) * off;
+
+				const sines = [
+					fixed,
+					calcSine(w, h, 300, 250, offset)
+				];
+
+				const sum = sines.reduce((prev, cur) => {
+					cur.forEach((_, x) => {
+						cur[x].forEach((_, y) => {
+							prev[x][y] += cur[x][y] / sines.length;
+						});
+					});
+
+					return prev;
+				}, Array(w).fill().map(() => Array(h).fill(0)));
+
+				const colors = sum.map((_, x) => {
+					return _.map((_, y) => {
+						return calcColor(-1, 1, Math.round(sum[x][y] * 100) / 100);
+					});
+				});
+
+				const canvas = document.querySelector("canvas");
+
+				const context = canvas.getContext("2d");
+
+				const id = context.createImageData(w, h);
+				const d  = id.data;
+
+				d.forEach((pix, id) => {
+					const x = Math.floor(id / 4 / w);
+					const y = Math.floor(id / 4 - (x * w));
+
+					const col = colors[x][y];
+
+					if(id % 4 === 0) {
+						d[id] = col.r;
+					}
+
+					if(id % 4 === 1) {
+						d[id] = col.g;
+					}
+
+					if(id % 4 === 2) {
+						d[id] = col.b;
+					}
+
+					if(id % 4 === 3) {
+						d[id] = 255;
+					}
+				});
+
+				context.putImageData(id, 0, 0);
+			}, 10);
+		</script>
+	</body>
+</html>
+
+
